@@ -1,0 +1,2 @@
+import os as nome_da_biblioteca
+print(nome_da_biblioteca.__version__)
