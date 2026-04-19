@@ -1,81 +1,83 @@
 '''
-Código gerado/revisado utilizando a LLM Gemini 3.1 Pro;
+Código gerado utilizando a LLM Gemini 3.1 Pro;
 Todo o código e saídas foram revisados pelo autor.
 '''
 
-import cv2 #version 4.13
 import os
+import cv2
+import shutil
 
-
-def process_datasets_in_root(target_size=(224, 224)):
+def generate_processed_datasets(base_path='.', target_size=(224, 224)):
     """
-    Identifica pastas de datasets na raiz, acessa as subpastas Good e Bad,
-    converte as imagens para escala de cinza, redimensiona e salva em uma
-    nova estrutura de diretórios isolada.
+    Percorre os diretórios '_split', aplica conversão Grayscale e Resize (224x224)
+    nas instâncias de Treino e Teste, e espelha a estrutura em pastas '_processed',
+    preservando os arquivos de anotação (Gabaritos).
     """
-    # 1. Identificar todas as pastas no diretório atual que começam com 'dataset'
-    base_path = '.'
-    dataset_folders = [d for d in os.listdir(base_path)
-                       if os.path.isdir(os.path.join(base_path, d)) and d.startswith('dataset') and not d.endswith(
-            '_processed')]
+    # 1. Identificação estrita dos diretórios de entrada
+    split_folders = [d for d in os.listdir(base_path)
+                     if os.path.isdir(os.path.join(base_path, d)) and d.endswith('_split')]
 
-    if not dataset_folders:
-        print("Nenhuma pasta com o prefixo 'dataset' foi encontrada.")
+    if not split_folders:
+        print("Erro Crítico: Nenhum diretório base com sufixo '_split' localizado.")
         return
 
-    print(f"Datasets encontrados: {dataset_folders}\n")
     valid_extensions = ('.jpg', '.jpeg', '.png')
 
-    # 2. Iterar sobre cada dataset encontrado
-    for dataset in dataset_folders:
-        print(f"Processando: {dataset}...")
+    for split_folder in split_folders:
+        # Substituição de namespace para o diretório de saída
+        processed_folder = split_folder.replace('_split', '_processed')
+        processed_path = os.path.join(base_path, processed_folder)
+        os.makedirs(processed_path, exist_ok=True)
 
-        # 3. Iterar sobre as duas classes esperadas
-        for category in ['Good', 'Bad']:
-            input_dir = os.path.join(base_path, dataset, category)
+        print(f"\n[ Início ] Processamento: {split_folder} -> {processed_folder}")
 
-            # Pula a categoria se a pasta não existir neste dataset específico
+        # 2. Processamento Espacial e Espectral (Train / Test)
+        for subset in ['train', 'test']:
+            input_dir = os.path.join(base_path, split_folder, subset)
+            output_dir = os.path.join(processed_path, subset)
+
             if not os.path.exists(input_dir):
+                print(f"  -> Aviso: Partição '{subset}' não encontrada. Ignorando.")
                 continue
 
-            # Define e cria o diretório de saída (ex: dataset01_mendeley_processed/Good)
-            output_dataset_dir = f"{dataset}_processed"
-            output_dir = os.path.join(base_path, output_dataset_dir, category)
             os.makedirs(output_dir, exist_ok=True)
-
             files = [f for f in os.listdir(input_dir) if f.lower().endswith(valid_extensions)]
-            if not files:
-                continue
-
             processed_count = 0
-            # 4. Processamento de Imagem
-            for file in files:
-                input_path = os.path.join(input_dir, file)
-                output_path = os.path.join(output_dir, file)
 
-                # Carregamento em BGR
-                img_bgr = cv2.imread(input_path)
+            for file in files:
+                input_file_path = os.path.join(input_dir, file)
+                output_file_path = os.path.join(output_dir, file)
+
+                # Leitura em 3 canais
+                img_bgr = cv2.imread(input_file_path)
                 if img_bgr is None:
                     continue
 
-                # Transformação para escala de cinza
+                # Redução de dimensionalidade espectral (1 canal)
                 img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
 
-                # Redimensionamento via interpolação por área
+                # Otimização de downsampling para evitar perda de textura crítica (aliasing)
                 img_resized = cv2.resize(img_gray, target_size, interpolation=cv2.INTER_AREA)
 
-                # Persistência do dado
-                cv2.imwrite(output_path, img_resized)
+                # Persistência da matriz
+                cv2.imwrite(output_file_path, img_resized)
                 processed_count += 1
 
-            print(f"  -> [{category}] {processed_count} imagens redimensionadas e convertidas.")
+            print(f"  -> [Partição: {subset.upper()}] {processed_count} matrizes convertidas ({target_size[0]}x{target_size[1]}).")
 
-    print("\nExecução finalizada. Dados processados salvos em diretórios isolados.")
+        # 3. Migração de Metadados (Gabaritos CSV)
+        for csv_file in ['train_gabarito.csv', 'test_gabarito.csv']:
+            src_csv = os.path.join(base_path, split_folder, csv_file)
+            dst_csv = os.path.join(processed_path, csv_file)
 
+            if os.path.exists(src_csv):
+                # shutil.copy2 preserva os timestamps do SO, garantindo auditabilidade
+                shutil.copy2(src_csv, dst_csv)
+                print(f"  -> Gabarito replicado: {csv_file}")
+            else:
+                print(f"  -> Falha de Metadados: {csv_file} ausente no diretório de origem.")
 
-# ==========================================
-# EXECUÇÃO DO SCRIPT
-# ==========================================
+    print("\n[ Fim ] Transformações matriciais e espelhamento estrutural concluídos.")
+
 if __name__ == "__main__":
-    # O tamanho alvo é configurável na chamada da função
-    process_datasets_in_root(target_size=(224, 224))
+    generate_processed_datasets()
