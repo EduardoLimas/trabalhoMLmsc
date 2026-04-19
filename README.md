@@ -14,3 +14,12 @@ We used daylight conditions.
 Dataset 03 Source:
 Dataset 01 + Dataset 02
 
+[preprocess.py](preprocess.py) --> process the images (RGB to grayscale, resize)
+
+[labels.py](labels.py) --> create the labels for the images
+
+As amostras de treino e teste foram separadas em 80% (treino) e 20% (teste), sendo separadas de forma aleatória para cada um dos datasets.
+
+Gabaritos --> 1 = Good, 0 = Bad
+
+Obter datos > Montar dataset original > split train test and labels > preprocess images > EDA por pastas > treinar e testar
