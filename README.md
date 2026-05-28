@@ -22,7 +22,3 @@ As amostras de treino e teste foram separadas em 80% (treino) e 20% (teste), sen
 
 Gabaritos --> 1 = Good, 0 = Bad
 
-Obter datos > Montar dataset original > split train test and labels > preprocess images > EDA por pastas > treinar e testar
-
-
-Para minimizar erros, a EDA será realizada na pasta de cada um dos datasets.
